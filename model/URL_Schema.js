@@ -10,6 +10,11 @@ const URL_Schema = new Schema({
         type: String,
         required: true
     },
+    short_code: {
+        type: String,
+        unique: true,
+        required: true
+    },
     created_at: {
         type: Date,
         default: Date.now
@@ -21,8 +26,8 @@ const URL_Schema = new Schema({
     customAlias: {
         type: String,
         unique: true,
-        sparse: true,
-        default: ''
+        sparse: true
+       
     }
 });
 
