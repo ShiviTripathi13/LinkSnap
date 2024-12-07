@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 
-const { createShortUrl, getUrlDetails, getQR,  getUrls, getStats, deleteUrl } = require('../controller/urlController');
+// input sanitization middleware
+const { validateAndSanitize } = require('../middleware/inputSanitaztion');
+const { createShortUrl, getUrlDetails, getQR,  getUrls, getStats, deleteUrl, redirectUrl } = require('../controller/urlController');
 
 // url operations
-router.post('/shorten', createShortUrl);
+router.post('/shorten', validateAndSanitize, createShortUrl);
 router.get('/', getUrls);
 router.get('/:code', getUrlDetails);
 router.delete('/:code', deleteUrl);
