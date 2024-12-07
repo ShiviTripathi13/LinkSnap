@@ -1,10 +1,15 @@
 const URL_Schema = require('../model/URL_Schema');
-const { urlValidationSchema } = require('../validation-middleware/urlValidation');
+const statisticsSchema = require('../model/statistics_Schema');
+const { urlValidationSchema } = require('../middleware/urlValidation');
 const qr = require('qr-image');
+const he = require('he');
 
 const createShortUrl = async (req, res) => {
     try {
-        const { longUrl, customAlias } = req.body;
+        // to avoid HTML-encoding in the POST request body (e.g., &amp; instead of &)
+        req.body.longUrl = he.decode(req.body.longUrl);
+        const { longUrl, customAlias, expirationDate } = req.body;
+        
         // Validate the request body using Joi
         const { error } = urlValidationSchema.validate({ longUrl, customAlias });
         if (error) {
@@ -13,10 +18,11 @@ const createShortUrl = async (req, res) => {
             });
         }
 
-        const url = await URL_Schema.findOne({ original_url: longUrl, customAlias });
+        const url = await URL_Schema.findOne({ original_url: longUrl, customAlias, expirationDate });
         if (url) {
             return res.json(url);
         }
+
         let shortCode;
 
         // Check for uniqueness only if customAlias is provided
@@ -39,8 +45,22 @@ const createShortUrl = async (req, res) => {
             qr_code: qrCode,
             customAlias: customAlias && customAlias.trim() !== "" ? customAlias : null ,
             clicks: 0,
+            expirationDate: expirationDate ? new Date(expirationDate) : null,
         });
         await newUrl.save();
+
+        const newStats = new statisticsSchema({
+            original_url: longUrl,
+            short_url: shortUrl,
+            short_code: shortCode,
+            clicks: 0,
+            referrers: [],
+            user_agents: [],
+            geo_locations: [],
+            timestamps: [],
+        });
+        await newStats.save();
+        
         res.json({shortUrl, qrCode, created_at: newUrl.created_at});
     }
     catch (error) {
@@ -48,6 +68,7 @@ const createShortUrl = async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 }
+
 const getUrls = async (req, res) => {
     try {
         const urls = await URL_Schema.find();
@@ -58,32 +79,60 @@ const getUrls = async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 }
+
 const redirectUrl = async (req, res) => {
     try {
-      // Find the URL by its short code
-      const url = await URL_Schema.findOne({ short_code: req.params.code });
-      
-      if (!url) {
-        return res.status(404).json({ error: 'URL not found' });
-      }
-  
-      // Increment the click count by 1
-      url.clicks += 1;
-  
-      // Save the updated click count in the database
-      await url.save();
-  
-      // Redirect the user to the original URL
-      res.redirect(url.original_url);
+        const shortCode = req.params.code;
+    
+        if (!shortCode) {
+            return res.status(400).json({ error: 'Short code is required' });
+        }
+
+        
+        
+        // Find the URL by its short code and increment the click count atomically
+        const url = await URL_Schema.findOneAndUpdate(
+            { short_code: shortCode },
+            { $inc: { clicks: 1 } }, // Increment clicks by 1
+            { new: true } // Return the updated document
+        );
+
+        const newStats = await statisticsSchema.findOneAndUpdate(
+            { short_code: shortCode },
+            { $inc: { clicks: 1 } }, // Increment clicks by 1
+            { new: true } // Return the updated document
+        );
+
+        if (!url) {
+            return res.status(404).json({ error: 'URL not found' });
+        }
+
+        // Check if the URL is expired
+        if (url.expirationDate && new Date() > url.expirationDate) {
+            return res.status(410).json({ error: 'URL has expired' });
+        }
+        
+        // Check if the original_url is a valid URL
+        const originalUrl = url.original_url;
+        const isValidUrl = /^https?:\/\/\S+/i.test(originalUrl); // Validate URL format (must start with http:// or https://)
+
+        if (!isValidUrl) {
+            return res.status(400).json({ error: 'Invalid URL format' });
+        }
+        // Redirect the user to the original URL
+        return res.redirect(originalUrl);
+        // Redirect the user to the original URL
+        // return res.redirect(url.original_url);
+        
     } catch (error) {
-      console.log(error);
+      console.error('Error during URL redirection:', error.message);
       res.status(500).json({ error: 'Internal Server Error' });
     }
   };
   
+  
 const getUrlDetails = async (req, res) => {
     try {
-        console.log(req.params.code);
         const url = await URL_Schema.findOne({ short_code: req.params.code });
         if (!url) {
             return res.status(404).json({ error: 'Url not found' });
@@ -93,7 +142,8 @@ const getUrlDetails = async (req, res) => {
             short_url: url.short_url,
             created_at: url.created_at,
             clicks: url.clicks,
-            customAlias: url.customAlias
+            customAlias: url.customAlias,
+            expirationDate: url.expirationDate,
         });
     }
     catch (error) {
@@ -103,11 +153,20 @@ const getUrlDetails = async (req, res) => {
 }
 const getStats = async (req, res) => {
     try {
-        const url = await URL_Schema.findOne({ short_code: req.params.code });
+        const url = await statisticsSchema.findOne({ short_code: req.params.code });
         if (!url) {
             return res.status(404).json({ error: 'Url not found' });
         }
-        res.json({ clicks: url.clicks });
+        res.json({
+            original_url: url.original_url,
+            short_url: url.short_url,
+            clicks: url.clicks,
+            referrers: url.referrers,
+            user_agents: url.user_agents,
+            geo_locations: url.geo_locations,
+            timestamps: url.timestamps,
+
+        });
     }
     catch (error) {
         console.log(error);

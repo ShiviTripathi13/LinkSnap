@@ -28,7 +28,8 @@ const URL_Schema = new Schema({
         unique: true,
         sparse: true
        
-    }
+    },
+    expirationDate: { type: Date }
 });
 
 module.exports = mongoose.model('URL_Schema', URL_Schema);
