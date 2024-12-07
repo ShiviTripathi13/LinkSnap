@@ -17,8 +17,8 @@
 
 3. Set Up Environmnet Variables: Create a .env file in the root directory and add the following variables:
     ```bash
-    MONGO_URI=<your-mongodb-uri>
-    PORT=8000
+    MONGO_URI = <your-mongodb-uri>
+    PORT = 8000 || <your-port>
 
 4. Run the application:
     ```bash
