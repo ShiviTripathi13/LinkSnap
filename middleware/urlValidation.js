@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-// Define the validation schema for the incoming data
+// Defining the validation schema for the incoming data
 const urlValidationSchema = Joi.object({
     longUrl: Joi.string()
         .uri({ scheme: ['http', 'https'] }) // Ensures it's a valid URL
