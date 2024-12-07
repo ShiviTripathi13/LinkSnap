@@ -19,7 +19,7 @@ LinkSnap is a URL shortener that allows users to shorten their long URLs and acc
 Follow the setup instructions in the [SETUP.md](./SETUP.md) file to get started.
 
 ## API Documentation
-For details on the available API endpoints, refer to the [API Documentation](./API_Documentation.md).
+For details on the available API endpoints, refer to the [API Documentation](./API_DOCUMENTATION.md).
 
 ## Test Cases
 For a list of test cases and testing details for the application, refer to the [Test Cases Documentation](./TESTS.md).
