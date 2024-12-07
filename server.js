@@ -26,10 +26,14 @@ app.use(express.static('public'));
 
 app.use(express.json());
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-}).on('error', (err) => {
-    console.log(err);
+// app.listen(PORT, () => {
+//     console.log(`Server is running on port ${PORT}`);
+// }).on('error', (err) => {
+//     console.log(err);
+// });
+
+app.get('/', (req, res) => {
+    res.status(200).send('LinkSnap is live!');
 });
 
 module.exports = app;
